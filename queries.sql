@@ -340,7 +340,7 @@ SELECT
     COUNT(CASE WHEN a.resultat = 'échec' THEN 1 END) as nb_echecs,
     COUNT(CASE WHEN a.resultat = 'mitigé' THEN 1 END) as nb_mitiges,
     ROUND(100.0 * COUNT(CASE WHEN a.resultat IN ('échec', 'mitigé') THEN 1 END) / 
-        COUNT(*), 2) as taux_problemes,
+        COUNT(*), 2) as taux_problemes,         
     -- Niveau de criticité
     CASE 
         WHEN s.priorite_loi = 1 AND COUNT(CASE WHEN a.resultat = 'échec' THEN 1 END) > 0 
