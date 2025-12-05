@@ -46,5 +46,12 @@ CREATE TABLE actions (
     id_humain INTEGER REFERENCES humains(id_humain) ON DELETE SET NULL,
     id_scenario INTEGER REFERENCES scenarios(id_scenario) ON DELETE SET NULL,
     action TEXT NOT NULL,
-    timestamp TIMESTAMP NOT NULL
+    timestamp TIMESTAMP NOT NULL,
+    resultat TEXT NOT NULL CHECK(resultat IN ('succès','échec','mitigé'))
 );
+
+-- Création des index pour optimisation des requêtes (Partie I - Étape 1)
+CREATE INDEX idx_actions_robot ON actions(id_robot);
+CREATE INDEX idx_actions_scenario ON actions(id_scenario);
+CREATE INDEX idx_scenarios_priorite ON scenarios(priorite_loi);
+CREATE INDEX idx_robots_etat ON robots(etat);
