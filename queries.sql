@@ -421,10 +421,21 @@ GROUP BY modele;
 -- ============================================================================
 
 -- Créer les rôles utilisateurs
-CREATE ROLE IF NOT EXISTS administrateur WITH LOGIN PASSWORD 'admin_colonie_2025';
-CREATE ROLE IF NOT EXISTS analyste WITH LOGIN PASSWORD 'analyste_colonie_2025';
-CREATE ROLE IF NOT EXISTS technicien WITH LOGIN PASSWORD 'technicien_colonie_2025';
-CREATE ROLE IF NOT EXISTS superviseur_ethique WITH LOGIN PASSWORD 'superviseur_colonie_2025';
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'administrateur') THEN
+        CREATE ROLE administrateur WITH LOGIN PASSWORD 'admin_colonie_2025';
+    END IF;
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'analyste') THEN
+        CREATE ROLE analyste WITH LOGIN PASSWORD 'analyste_colonie_2025';
+    END IF;
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'technicien') THEN
+        CREATE ROLE technicien WITH LOGIN PASSWORD 'technicien_colonie_2025';
+    END IF;
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'superviseur_ethique') THEN
+        CREATE ROLE superviseur_ethique WITH LOGIN PASSWORD 'superviseur_colonie_2025';
+    END IF;
+END $$;
 
 -- ----------------------------------------------------------------------------
 -- ADMINISTRATEUR : Accès complet
