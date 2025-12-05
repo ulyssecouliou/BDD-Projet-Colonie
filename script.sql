@@ -721,3 +721,92 @@ INSERT INTO actions (id_action, id_robot, id_humain, id_scenario, action, timest
 COMMIT;
 
 -- Fin du script : 100 robots, 200 humains, 50 scenarios, 300 actions
+
+
+ALTER TABLE actions
+ADD COLUMN resultat TEXT CHECK (resultat IN ('succès','échec','indéterminé'));
+
+
+CREATE TABLE priorisation_lois (
+    id_priorisation SERIAL PRIMARY KEY,
+    id_action INT REFERENCES actions(id_action) ON DELETE CASCADE,
+    loi INTEGER NOT NULL CHECK (loi IN (1,2,3)),
+    justification TEXT
+);
+
+
+CREATE TABLE resolutions (
+    id_resolution SERIAL PRIMARY KEY,
+    id_scenario INT REFERENCES scenarios(id_scenario),
+    id_robot INT REFERENCES robots(id_robot),
+    resolution_finale BOOLEAN,
+    timestamp TIMESTAMP DEFAULT NOW()
+);
+
+
+CREATE VIEW vue_indicateurs_performance AS
+SELECT 
+    r.id_robot,
+    r.nom_robot,
+
+    COUNT(DISTINCT rm.id_scenario) AS nb_scenarios_resolus,
+
+    SUM(CASE WHEN pl.loi = 1 THEN 1 ELSE 0 END) AS priorite_loi_1,
+    SUM(CASE WHEN pl.loi = 2 THEN 1 ELSE 0 END) AS priorite_loi_2,
+    SUM(CASE WHEN pl.loi = 3 THEN 1 ELSE 0 END) AS priorite_loi_3,
+
+    ROUND(
+        AVG(CASE WHEN a.resultat = 'succès' THEN 1 ELSE 0 END)::NUMERIC * 100,
+        2
+    ) AS taux_reussite
+
+FROM robots r
+LEFT JOIN actions a ON a.id_robot = r.id_robot
+LEFT JOIN priorisation_lois pl ON pl.id_action = a.id_action
+LEFT JOIN resolutions rm ON rm.id_robot = r.id_robot
+GROUP BY r.id_robot, r.nom_robot;
+
+
+CREATE VIEW vue_robots_performants AS
+SELECT *
+FROM vue_indicateurs_performance
+WHERE nb_scenarios_resolus >= 10
+  AND taux_reussite >= 70;
+
+
+CREATE VIEW vue_robots_defaillants AS
+SELECT vip.*
+FROM vue_indicateurs_performance vip
+WHERE taux_reussite < 50
+   OR priorite_loi_1 < priorite_loi_2;
+
+
+CREATE VIEW vue_impact_actions AS
+SELECT 
+    a.id_action,
+    a.id_robot,
+    r.nom_robot,
+    a.id_scenario,
+    s.priorite_loi,
+    a.action,
+    a.resultat
+FROM actions a
+JOIN robots r ON r.id_robot = a.id_robot
+JOIN scenarios s ON s.id_scenario = a.id_scenario;
+
+
+CREATE INDEX idx_actions_id_robot ON actions(id_robot);
+CREATE INDEX idx_actions_id_scenario ON actions(id_scenario);
+CREATE INDEX idx_actions_resultat ON actions(resultat);
+
+CREATE INDEX idx_priorisation_loi ON priorisation_lois(loi);
+
+
+
+CREATE ROLE analyste;
+CREATE ROLE superviseur;
+
+GRANT USAGE ON SCHEMA public TO analyste, superviseur;
+GRANT SELECT ON vue_indicateurs_performance TO analyste, superviseur;
+GRANT SELECT ON vue_robots_performants TO analyste;
+GRANT SELECT ON vue_robots_defaillants TO superviseur;
