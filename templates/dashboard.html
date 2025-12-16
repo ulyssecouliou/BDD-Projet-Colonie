@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colonie Spatiale - Tableau de Bord IA Éthique</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Centre de Contrôle - Colonie Spatiale</h1>
+            <p>Système de Monitoring - Analyse Éthique des Décisions Robotiques</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="overview">📊 Aperçu Général</button>
+            <button class="tab-btn" data-tab="ethics">⚖️ Dilemmes Éthiques</button>
+            <button class="tab-btn" data-tab="robots">🤖 Performance Robots</button>
+            <button class="tab-btn" data-tab="vulnerability">👥 Analyse Vulnérabilité</button>
+            <button class="tab-btn" data-tab="actions">🎯 Catégories Actions</button>
+            <button class="tab-btn" data-tab="timeline">⏱️ Timeline</button>
+        </nav>
+
+        <!-- TAB: OVERVIEW -->
+        <div id="overview" class="tab-content active">
+            <div class="section-header">
+                <h2>Vue d'ensemble du système</h2>
+                <p>Métriques clés et indicateurs de performance</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalActions">-</div>
+                    <div class="stat-label">Actions Totales</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="successRate">-%</div>
+                    <div class="stat-label">Taux de Réussite</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalRobots">-</div>
+                    <div class="stat-label">Robots Actifs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalHumains">-</div>
+                    <div class="stat-label">Humains Protégés</div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3>📈 Résultats des Actions</h3>
+                    <canvas id="resultsChart"></canvas>
+                </div>
+                <div class="card">
+                    <h3>🎯 Vulnérabilité Humains</h3>
+                    <canvas id="vulnerabilityChart"></canvas>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3>🤖 Status des Robots par Modèle</h3>
+                    <canvas id="robotStatusChart"></canvas>
+                </div>
+                <div class="card">
+                    <h3>⭐ Taux de Réussite par Modèle</h3>
+                    <canvas id="modelPerformanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: ETHICAL DILEMMAS -->
+        <div id="ethics" class="tab-content">
+            <div class="section-header">
+                <h2>Analyse des Dilemmes Éthiques</h2>
+                <p>Les trois lois de la robotique et leurs conflits</p>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3>⚖️ Distribution par Loi Prioritaire</h3>
+                    <canvas id="ethicalLawsChart"></canvas>
+                </div>
+                <div class="card">
+                    <h3>📊 Taux de Réussite par Loi</h3>
+                    <canvas id="lawSuccessChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🎭 Catégories de Scénarios par Loi Prioritaire</h3>
+                <div id="scenariosByPriority" class="scenarios-by-priority"></div>
+            </div>
+
+            <div class="card">
+                <h3>📋 Détail des Scénarios Éthiques</h3>
+                <div id="ethicalScenariosTable" class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Scénario</th>
+                                <th>Loi Prioritaire</th>
+                                <th>Actions</th>
+                                <th>Succès</th>
+                                <th>Taux Réussite</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ethicalTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: ROBOT PERFORMANCE -->
+        <div id="robots" class="tab-content">
+            <div class="section-header">
+                <h2>Performance et Spécialisation des Robots</h2>
+                <p>Analyse individuelle des capacités et résultats</p>
+            </div>
+
+            <div class="card">
+                <h3>📊 Performance par Modèle</h3>
+                <canvas id="robotComparisonChart"></canvas>
+            </div>
+
+            <div class="card">
+                <h3>🏆 Top 15 Robots les Plus Performants</h3>
+                <div id="robotRankingsTable" class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Rang</th>
+                                <th>Robot</th>
+                                <th>Modèle</th>
+                                <th>État</th>
+                                <th>Actions</th>
+                                <th>Scénarios</th>
+                                <th>Succès</th>
+                                <th>Taux</th>
+                            </tr>
+                        </thead>
+                        <tbody id="robotRankingsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: VULNERABILITY ANALYSIS -->
+        <div id="vulnerability" class="tab-content">
+            <div class="section-header">
+                <h2>Analyse de la Vulnérabilité</h2>
+                <p>Corrélation entre vulnérabilité humaine et succès des interventions</p>
+            </div>
+
+            <div class="card">
+                <h3>🔗 Vulnérabilité vs Résultats des Actions</h3>
+                <canvas id="vulnerabilityOutcomesChart"></canvas>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3>📍 Analyse par Secteur</h3>
+                    <div id="sectorAnalysisTable" class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Secteur</th>
+                                    <th>Scénarios</th>
+                                    <th>Actions</th>
+                                    <th>Succès</th>
+                                    <th>Échecs</th>
+                                    <th>Taux</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sectorAnalysisBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📊 Heatmap: Vulnérabilité × Secteurs</h3>
+                    <canvas id="sectorVulnHeatmap"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: ACTION CATEGORIES -->
+        <div id="actions" class="tab-content">
+            <div class="section-header">
+                <h2>Catégories d'Actions et Efficacité</h2>
+                <p>Types de décisions et leur taux de succès</p>
+            </div>
+
+            <div class="card">
+                <h3>🎯 Taux de Réussite par Catégorie d'Action</h3>
+                <canvas id="actionCategoriesChart"></canvas>
+            </div>
+
+            <div class="card">
+                <h3>📋 Détail des Catégories d'Actions</h3>
+                <div id="actionCategoriesTable" class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Catégorie d'Action</th>
+                                <th>Total Actions</th>
+                                <th>Succès</th>
+                                <th>Taux de Réussite</th>
+                                <th>Indicateur</th>
+                            </tr>
+                        </thead>
+                        <tbody id="actionCategoriesBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: TIMELINE -->
+        <div id="timeline" class="tab-content">
+            <div class="section-header">
+                <h2>Chronologie des Actions</h2>
+                <p>Historique détaillé des 20 dernières interventions</p>
+            </div>
+
+            <div class="card">
+                <div id="timelineList" class="timeline-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Système de Monitoring Colonie Spatiale © 2025 | Données en temps réel</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+</body>
+</html>
