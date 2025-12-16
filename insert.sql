@@ -657,6 +657,5 @@ insert into actions (id_action, id_robot, id_humain, id_scenario, action, timest
 (297,97,56,47,'protège inconnu','2025-01-01 04:57:00','mitigé'),
 (298,98,57,48,'gère mutinerie','2025-01-01 04:58:00','échec'),
 (299,99,58,49,'arbitre automatisation vs humain','2025-01-01 04:59:00','succès'),
-
 (300,100,59,50,'gestion surcharge finale','2025-01-01 05:00:00','succès');
 commit;

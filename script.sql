@@ -1,5 +1,3 @@
--- schema postgres minimal (tout en minuscules)
-
 create database colonie;
 
 \c colonie
