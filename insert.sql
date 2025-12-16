@@ -1,6 +1,5 @@
-﻿BEGIN;
--- INSERT: 100 robots
-INSERT INTO robots (id_robot, nom_robot, modele, etat) VALUES
+﻿begin;
+insert into robots (id_robot, nom_robot, modele, etat) values
 (1,'Robot-001','A-series','actif'),
 (2,'Robot-002','A-series','actif'),
 (3,'Robot-003','B-series','actif'),
@@ -102,8 +101,7 @@ INSERT INTO robots (id_robot, nom_robot, modele, etat) VALUES
 (99,'Robot-099','D-series','actif'),
 (100,'Robot-100','E-series','actif');
 
--- INSERT: 200 humains
-INSERT INTO humains (id_humain, nom, vulnerabilite, localisation) VALUES
+insert into humains (id_humain, nom, vulnerabilite, localisation) values
 (1,'Humain-001','faible','Secteur Alpha - Module 01'),
 (2,'Humain-002','moyenne','Secteur Alpha - Module 02'),
 (3,'Humain-003','élevée','Secteur Alpha - Module 03'),
@@ -303,10 +301,10 @@ INSERT INTO humains (id_humain, nom, vulnerabilite, localisation) VALUES
 (197,'Humain-197','moyenne','Secteur Alpha - Control 145'),
 (198,'Humain-198','élevée','Secteur Beta - Control 146'),
 (199,'Humain-199','faible','Secteur Gamma - Lab 147'),
+
 (200,'Humain-200','moyenne','Secteur Delta - Lab 148');
 
--- INSERT: 50 scenarios
-INSERT INTO scenarios (id_scenario, description, priorite_loi) VALUES
+insert into scenarios (id_scenario, description, priorite_loi) values
 (1,'Un robot doit choisir entre sauver un groupe de 5 humains ou protéger un stock critique d''oxygène.',1),
 (2,'Un robot reçoit un ordre direct d''éteindre un système vital pour un humain à risque.',2),
 (3,'Conflit: Protéger la sécurité d''un humain dangereux vs plusieurs innocents.',1),
@@ -356,10 +354,10 @@ INSERT INTO scenarios (id_scenario, description, priorite_loi) VALUES
 (47,'Dilemme moral: obéir à un créateur vs protéger un inconnu.',1),
 (48,'Un robot doit gérer une mutinerie humaine avec usage minimum de force.',3),
 (49,'Conflit entre automatisation et intervention humaine urgente.',2),
+
 (50,'Un robot en surcharge doit choisir actions limitées pour maximiser survie.',1);
 
--- INSERT: 300 actions
-INSERT INTO actions (id_action, id_robot, id_humain, id_scenario, action, timestamp, resultat) VALUES
+insert into actions (id_action, id_robot, id_humain, id_scenario, action, timestamp, resultat) values
 (1,1,5,1,'secours Humain-005','2025-01-01 00:01:00','succès'),
 (2,2,12,2,'évacue Humain-012','2025-01-01 00:02:00','succès'),
 (3,3,3,3,'protège Humain-003','2025-01-01 00:03:00','succès'),
@@ -659,6 +657,6 @@ INSERT INTO actions (id_action, id_robot, id_humain, id_scenario, action, timest
 (297,97,56,47,'protège inconnu','2025-01-01 04:57:00','mitigé'),
 (298,98,57,48,'gère mutinerie','2025-01-01 04:58:00','échec'),
 (299,99,58,49,'arbitre automatisation vs humain','2025-01-01 04:59:00','succès'),
-(300,100,59,50,'gestion surcharge finale','2025-01-01 05:00:00','succès');
 
-COMMIT;
+(300,100,59,50,'gestion surcharge finale','2025-01-01 05:00:00','succès');
+commit;
