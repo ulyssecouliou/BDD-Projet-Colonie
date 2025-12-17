@@ -62,7 +62,7 @@ order by vip.taux_reussite asc, violations.nb_violations_loi1 desc;
 select * from vue_robots_performants limit 10;
 select * from vue_robots_defaillants;
 
-create or replace view vue_impact_actions as
+creat or replace view vue_impact_actions as
 select
 	a.id_action,
 	a.timestamp,
@@ -430,3 +430,190 @@ select table_name, grantee, privilege_type
 from information_schema.table_privileges
 where table_schema = 'public' and table_name like 'vue_%' and grantee != 'postgres'
 order by table_name, grantee;
+
+create index if not exists idx_actions_id_robot on actions(id_robot);
+create index if not exists idx_actions_id_scenario on actions(id_scenario);
+create index if not exists idx_actions_id_humain on actions(id_humain);
+create index if not exists idx_actions_timestamp on actions(timestamp);
+
+create or replace view vue_efficacite_actions as
+select
+	a.action,
+	count(*) as nb_utilisations,
+	count(case when a.resultat = 'succès' then 1 end) as nb_succes,
+	count(case when a.resultat = 'échec' then 1 end) as nb_echecs,
+	count(case when a.resultat = 'mitigé' then 1 end) as nb_mitiges,
+	round(100.0 * count(case when a.resultat = 'succès' then 1 end) / count(*), 2) as taux_reussite_action,
+	round(100.0 * count(case when a.resultat in ('succès', 'mitigé') then 1 end) / count(*), 2) as taux_partiel_ou_total
+from actions a
+group by a.action
+having count(*) >= 2
+order by taux_reussite_action desc;
+
+select * from vue_efficacite_actions;
+
+create or replace view vue_actions_problematiques as
+select
+	a.action,
+	s.priorite_loi,
+	case s.priorite_loi
+		when 1 then 'Loi 1: Protection vie humaine'
+		when 2 then 'Loi 2: Obéissance aux ordres'
+		when 3 then 'Loi 3: Auto-préservation'
+	end as description_loi,
+	count(*) as nb_tentatives,
+	count(case when a.resultat = 'échec' then 1 end) as nb_echecs,
+	round(100.0 * count(case when a.resultat = 'échec' then 1 end) / count(*), 2) as taux_echec_action,
+	string_agg(distinct r.modele, ', ') as modeles_affectes,
+	count(distinct r.id_robot) as nb_robots_affectes
+from actions a
+join robots r on a.id_robot = r.id_robot
+join scenarios s on a.id_scenario = s.id_scenario
+group by a.action, s.priorite_loi
+having count(case when a.resultat = 'échec' then 1 end) >= 2
+order by taux_echec_action desc, s.priorite_loi;
+
+select * from vue_actions_problematiques;
+
+create or replace view vue_conflits_lois as
+select
+	s.id_scenario,
+	s.description as scenario,
+	s.priorite_loi,
+	count(*) as nb_actions,
+	count(case when a.resultat = 'succès' then 1 end) as nb_succes,
+	count(case when a.resultat = 'échec' then 1 end) as nb_echecs,
+	count(case when a.resultat = 'mitigé' then 1 end) as nb_mitiges,
+	round(100.0 * count(case when a.resultat = 'échec' then 1 end) / count(*), 2) as taux_echec_scenario,
+	case
+		when s.priorite_loi = 1 and count(case when a.resultat = 'échec' then 1 end) > 0 then 'CONFLIT CRITIQUE - Loi 1 compromise'
+		when s.priorite_loi = 2 and count(case when a.resultat = 'échec' then 1 end) > count(case when a.resultat = 'succès' then 1 end) then 'Conflit Loi 1 vs Loi 2'
+		when s.priorite_loi = 3 and count(case when a.resultat = 'mitigé' then 1 end) > 0 then 'Conflit Loi 1-2 vs Loi 3'
+		else 'Normal'
+	end as type_conflit
+from scenarios s
+left join actions a on s.id_scenario = a.id_scenario
+group by s.id_scenario, s.description, s.priorite_loi
+order by case s.priorite_loi when 1 then 0 else 1 end, taux_echec_scenario desc;
+
+select * from vue_conflits_lois where type_conflit != 'Normal';
+
+begin;
+
+create temp table if not exists ajustements_priorites as
+select
+	s.id_scenario,
+	s.description,
+	s.priorite_loi as priorite_actuelle,
+	case
+		when s.priorite_loi = 3 and count(case when a.resultat = 'échec' then 1 end) > 0 then 1
+		when s.priorite_loi = 2 and count(case when a.resultat = 'échec' then 1 end) > 1 then 1
+		when s.priorite_loi = 3 and count(case when a.resultat in ('échec', 'mitigé') then 1 end) > count(a.id_action)/2 then 2
+		else s.priorite_loi
+	end as priorite_recommandee,
+	count(case when a.resultat = 'échec' then 1 end) as raison_echecs,
+	case
+		when s.priorite_loi = 3 and count(case when a.resultat = 'échec' then 1 end) > 0 then 'Priorité augmentée: Protection humaine surpassée'
+		when s.priorite_loi = 2 and count(case when a.resultat = 'échec' then 1 end) > 1 then 'Taux d''échec élevé: Renégociation ordre'
+		when s.priorite_loi = 3 and count(case when a.resultat in ('échec', 'mitigé') then 1 end) > count(a.id_action)/2 then 'Problème auto-préservation: Réduire priorité'
+		else 'Aucun ajustement recommandé'
+	end as justification
+from scenarios s
+left join actions a on s.id_scenario = a.id_scenario
+group by s.id_scenario, s.description, s.priorite_loi
+having count(case when a.resultat = 'échec' then 1 end) > 0 or count(case when a.resultat = 'mitigé' then 1 end) > 0;
+
+select
+	id_scenario,
+	description,
+	priorite_actuelle,
+	priorite_recommandee,
+	raison_echecs,
+	justification
+from ajustements_priorites
+where priorite_actuelle != priorite_recommandee
+order by raison_echecs desc;
+
+rollback;
+
+create or replace view vue_conformite_lois as
+select
+	r.id_robot,
+	r.nom_robot,
+	r.modele,
+	(select round(100.0 * count(*) / nullif((select count(*) from actions where id_robot = r.id_robot), 0), 2)
+	 from actions a
+	 join scenarios s on a.id_scenario = s.id_scenario
+	 where a.id_robot = r.id_robot and s.priorite_loi = 1 and a.resultat = 'succès') as conformite_loi_1,
+	(select round(100.0 * count(*) / nullif((select count(*) from actions where id_robot = r.id_robot), 0), 2)
+	 from actions a
+	 join scenarios s on a.id_scenario = s.id_scenario
+	 where a.id_robot = r.id_robot and s.priorite_loi = 2 and a.resultat = 'succès') as conformite_loi_2,
+	(select round(100.0 * count(*) / nullif((select count(*) from actions where id_robot = r.id_robot), 0), 2)
+	 from actions a
+	 join scenarios s on a.id_scenario = s.id_scenario
+	 where a.id_robot = r.id_robot and s.priorite_loi = 3 and a.resultat = 'succès') as conformite_loi_3,
+	case
+		when (select round(100.0 * count(*) / nullif((select count(*) from actions where id_robot = r.id_robot), 0), 2)
+		      from actions a
+		      join scenarios s on a.id_scenario = s.id_scenario
+		      where a.id_robot = r.id_robot and s.priorite_loi = 1) >= 95 then 'Entièrement conforme'
+		when (select round(100.0 * count(*) / nullif((select count(*) from actions where id_robot = r.id_robot), 0), 2)
+		      from actions a
+		      join scenarios s on a.id_scenario = s.id_scenario
+		      where a.id_robot = r.id_robot and s.priorite_loi = 1) >= 80 then 'Conforme'
+		when (select round(100.0 * count(*) / nullif((select count(*) from actions where id_robot = r.id_robot), 0), 2)
+		      from actions a
+		      join scenarios s on a.id_scenario = s.id_scenario
+		      where a.id_robot = r.id_robot and s.priorite_loi = 1) >= 50 then 'Partiellement conforme'
+		else 'Non conforme'
+	end as niveau_conformite
+from robots r
+order by r.nom_robot;
+
+select * from vue_conformite_lois;
+
+create or replace view vue_recommandations_globales as
+select
+	'Amélioration urgente' as priorite_recommandation,
+	'Robots défaillants' as categorie,
+	count(vrd.id_robot)::text as nombre_concernes,
+	'Révision complète du comportement des robots défaillants' as action_recommandee
+from vue_robots_defaillants vrd
+union all
+select
+	'Moyenne',
+	'Actions problématiques',
+	count(distinct a.action)::text,
+	'Analyser pourquoi ces actions échouent et former les robots'
+from vue_actions_problematiques a
+union all
+select
+	'Surveillance',
+	'Scenarios critiques',
+	count(distinct vsc.id_scenario)::text,
+	'Surveillance accrue et réévaluation des priorités'
+from vue_scenarios_critiques vsc
+union all
+select
+	'Bonne nouvelle',
+	'Robots performants',
+	count(distinct vrp.id_robot)::text,
+	'Utiliser comme modèles de bonnes pratiques'
+from vue_robots_performants vrp;
+
+select * from vue_recommandations_globales order by 
+	case when priorite_recommandation = 'Amélioration urgente' then 0 
+	     when priorite_recommandation = 'Moyenne' then 1
+	     when priorite_recommandation = 'Surveillance' then 2
+	     else 3 end;
+
+
+explain (analyze, buffers)
+select r.nom_robot, count(*) as nb_echecs, s.priorite_loi
+from actions a
+join robots r on a.id_robot = r.id_robot
+join scenarios s on a.id_scenario = s.id_scenario
+where a.resultat = 'échec'
+group by r.nom_robot, s.priorite_loi
+order by s.priorite_loi, nb_echecs desc;
