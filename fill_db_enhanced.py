@@ -8,13 +8,13 @@ import os
 import random
 from datetime import datetime, timedelta
 
-# Configuration
 password = os.environ.get('POSTGRES_PASSWORD', 'ulysse')
 conn = psycopg2.connect(
     host="localhost",
     database="colonie",
     user="postgres",
     password=password
+
 )
 conn.set_client_encoding('UTF8')
 cur = conn.cursor()
@@ -22,10 +22,6 @@ cur = conn.cursor()
 print("\n" + "=" * 70)
 print("🤖 GÉNÉRATION DE DONNÉES ENRICHIES POUR DILEMMES ÉTHIQUES")
 print("=" * 70)
-
-# ============================================================================
-# 1. MODÈLES DE ROBOTS AVEC SPÉCIALITÉS
-# ============================================================================
 
 specialites_robots = {
     'Humanoid-X': {
