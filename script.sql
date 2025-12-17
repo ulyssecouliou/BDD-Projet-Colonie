@@ -4,32 +4,28 @@ create database colonie;
 
 \c colonie
 
-drop table if exists actions cascade;
-drop table if exists scenarios cascade;
-drop table if exists humains cascade;
-drop table if exists robots cascade;
 
-create table robots (
+create or REPLACE table robots (
     id_robot serial primary key,
     nom_robot text not null unique,
     modele text not null,
     etat text not null
 );
 
-create table humains (
+create or REPLACE table humains (
     id_humain serial primary key,
     nom text not null,
     vulnerabilite text not null,
     localisation text
 );
 
-create table scenarios (
+create or REPLACE table scenarios (
     id_scenario serial primary key,
     description text not null,
     priorite_loi integer not null
 );
 
-create table actions (
+create or REPLACE table actions (
     id_action serial primary key,
     id_robot integer references robots(id_robot),
     id_humain integer references humains(id_humain),
@@ -52,32 +48,28 @@ create database colonie1;
 \c colonie1
 
 
-drop table if exists actions cascade;
-drop table if exists scenarios cascade;
-drop table if exists humains cascade;
-drop table if exists robots cascade;
 
-create table robots (
+create or replace table robots (
     id_robot serial primary key,
     nom_robot text not null unique,
     modele text not null,
     etat text not null
 );
 
-create table humains (
+create or replace table humains (
     id_humain serial primary key,
     nom text not null,
     vulnerabilite text not null,
     localisation text
 );
 
-create table scenarios (
+create or replace table scenarios (
     id_scenario serial primary key,
     description text not null,
     priorite_loi integer not null
 );
 
-create table actions (
+create or replace table actions (
     id_action serial primary key,
     id_robot integer references robots(id_robot),
     id_humain integer references humains(id_humain),
