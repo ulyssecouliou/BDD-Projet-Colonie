@@ -1,3 +1,5 @@
+﻿\c colonie1;
+
 begin;
 
 insert into robots (id_robot, nom_robot, modele, etat) values
