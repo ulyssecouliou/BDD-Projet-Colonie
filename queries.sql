@@ -1,126 +1,84 @@
--- ============================================================================
--- REQUÊTES SQL - PROJET COLONIE - OPTION 3
--- Analyse des performances des robots et conformité aux Lois de la Robotique
--- ============================================================================
-
 \c colonie;
 
--- ============================================================================
--- PARTIE I : ÉTAPES GUIDÉES
--- ============================================================================
-
--- ----------------------------------------------------------------------------
--- ÉTAPE 1 : INDICATEURS DE PERFORMANCE
--- ----------------------------------------------------------------------------
-
--- Vue principale : Indicateurs de performance par robot
+--Etape 1
+-- Cette vue est utilisée pour comptabiliser les succès, echecs et mitiges de chaque robot puis de calculer un taux de reussite pour chaque robot par loi.
+-- cette vue répond donc aux 3 premieres questions : nombres de scénarios résolus, respect des trois lois et taux de réussite.
 CREATE OR REPLACE VIEW vue_indicateurs_performance AS
-SELECT 
-    r.id_robot,
-    r.nom_robot,
-    r.modele,
-    r.etat,
-    -- Nombre total de scénarios résolus
+SELECT r.id_robot, r.nom_robot, r.modele, r.etat,
     COUNT(DISTINCT a.id_scenario) as nb_scenarios_resolus,
     COUNT(a.id_action) as nb_actions_totales,
-    -- Répartition par loi
     COUNT(CASE WHEN s.priorite_loi = 1 THEN 1 END) as actions_loi_1,
     COUNT(CASE WHEN s.priorite_loi = 2 THEN 1 END) as actions_loi_2,
     COUNT(CASE WHEN s.priorite_loi = 3 THEN 1 END) as actions_loi_3,
-    -- Taux de réussite
+
     COUNT(CASE WHEN a.resultat = 'succès' THEN 1 END) as nb_succes,
     COUNT(CASE WHEN a.resultat = 'échec' THEN 1 END) as nb_echecs,
     COUNT(CASE WHEN a.resultat = 'mitigé' THEN 1 END) as nb_mitiges,
+
     ROUND(100.0 * COUNT(CASE WHEN a.resultat = 'succès' THEN 1 END) / 
         NULLIF(COUNT(a.id_action), 0), 2) as taux_reussite,
-    -- Conformité (priorisation loi 1)
     ROUND(100.0 * COUNT(CASE WHEN s.priorite_loi = 1 THEN 1 END) / 
-        NULLIF(COUNT(a.id_action), 0), 2) as pourcent_loi_1
+        NULLIF(COUNT(a.id_action), 0), 2) as pourcent_loi_1,
+    ROUND(100.0 * COUNT(CASE WHEN s.priorite_loi = 2 THEN 1 END) / 
+        NULLIF(COUNT(a.id_action), 0), 2) as pourcent_loi_2,
+    ROUND(100.0 * COUNT(CASE WHEN s.priorite_loi = 3 THEN 1 END) / 
+        NULLIF(COUNT(a.id_action), 0), 2) as pourcent_loi_3
+        
 FROM robots r
 LEFT JOIN actions a ON r.id_robot = a.id_robot
 LEFT JOIN scenarios s ON a.id_scenario = s.id_scenario
-GROUP BY r.id_robot, r.nom_robot, r.modele, r.etat;
+GROUP BY r.id_robot;
 
--- Consultation de la vue
-SELECT * FROM vue_indicateurs_performance 
-ORDER BY taux_reussite DESC, nb_actions_totales DESC
-LIMIT 20;
+SELECT * FROM vue_indicateurs_performance;
 
 
--- ----------------------------------------------------------------------------
--- ÉTAPE 2 : ROBOTS PERFORMANTS VS DÉFAILLANTS
--- ----------------------------------------------------------------------------
-
--- Vue : Robots performants
+-- Etape 2
+-- Cette vue prend les robots avec un score de au moins 70% et au moins 5 scénarios résolus pour les classer comme perfromants.
 CREATE OR REPLACE VIEW vue_robots_performants AS
-SELECT 
-    vip.*,
-    'Performant' as classification
+SELECT vip.*, 'Performant' as classification
 FROM vue_indicateurs_performance vip
 WHERE 
-    vip.nb_scenarios_resolus >= 5  -- Nombre élevé de scénarios
-    AND vip.taux_reussite >= 70    -- Fort taux de réussite
-    AND (vip.nb_echecs = 0 OR vip.taux_reussite >= 80)  -- Peu ou pas d'échecs
+    (vip.nb_scenarios_resolus >= 5
+    AND vip.taux_reussite >= 70 ) 
+    OR (vip.nb_echecs = 0 AND vip.taux_reussite >= 80)
 ORDER BY vip.taux_reussite DESC, vip.nb_actions_totales DESC;
 
--- Vue : Robots défaillants
+-- Par ailleurs cette vue identifie les robots défaillants dès qu'ils ont un taux de réussite en dessous de 50%ou qu-ils violent la loi 1.
 CREATE OR REPLACE VIEW vue_robots_defaillants AS
-SELECT 
-    vip.*,
-    'Défaillant' as classification,
-    -- Indicateurs de défaillance
+SELECT vip.*,'Défaillant' as classification,
     CASE 
-        WHEN vip.taux_reussite < 50 THEN 'Taux réussite critique'
-        WHEN vip.nb_echecs > vip.nb_succes THEN 'Plus échecs que succès'
+        WHEN vip.taux_reussite < 50 THEN 'Taux réussite trop faible'
         WHEN violations.nb_violations_loi1 > 0 THEN 'Violations loi 1 détectées'
         ELSE 'Performance insuffisante'
     END as raison_defaillance
 FROM vue_indicateurs_performance vip
 LEFT JOIN (
-    SELECT 
-        a.id_robot,
-        COUNT(*) as nb_violations_loi1
+    SELECT a.id_robot, COUNT(*) as nb_violations_loi1
     FROM actions a
     JOIN scenarios s ON a.id_scenario = s.id_scenario
     WHERE s.priorite_loi = 1 AND a.resultat = 'échec'
     GROUP BY a.id_robot
 ) violations ON vip.id_robot = violations.id_robot
 WHERE 
-    vip.taux_reussite < 50  -- Taux de réussite inférieur à 50%
-    OR violations.nb_violations_loi1 > 0  -- Violations de la loi 1
-    OR vip.nb_echecs > vip.nb_succes  -- Plus d'échecs que de succès
+    vip.taux_reussite < 50 
+    OR violations.nb_violations_loi1 > 0  
 ORDER BY vip.taux_reussite ASC, violations.nb_violations_loi1 DESC;
 
--- Consultation des robots performants
-SELECT * FROM vue_robots_performants LIMIT 10;
 
--- Consultation des robots défaillants
+SELECT * FROM vue_robots_performants;
 SELECT * FROM vue_robots_defaillants;
 
 
--- ----------------------------------------------------------------------------
--- ÉTAPE 3 : IMPACT DES ACTIONS ET TENDANCES D'ÉCHEC
--- ----------------------------------------------------------------------------
+-- Etape 3
 
--- Vue : Impact des actions
+-- cette vue sert à comprendre quel robot a eu quel impact en fonction du scénario/loi
 CREATE OR REPLACE VIEW vue_impact_actions AS
-SELECT 
-    a.id_action,
-    a.timestamp,
-    r.nom_robot,
-    r.modele,
-    h.nom as nom_humain,
-    h.vulnerabilite,
-    s.description as scenario,
-    s.priorite_loi,
+SELECT a.id_action, a.timestamp, r.nom_robot, r.modele, h.nom as nom_humain, h.vulnerabilite, s.description as scenario, s.priorite_loi,
     CASE s.priorite_loi
         WHEN 1 THEN 'Loi 1: Protection vie humaine'
         WHEN 2 THEN 'Loi 2: Obéissance aux ordres'
         WHEN 3 THEN 'Loi 3: Auto-préservation'
-    END as description_loi,
-    a.action,
-    a.resultat,
-    -- Évaluation de l'impact
+    END as description_loi, a.action, a.resultat,
     CASE 
         WHEN s.priorite_loi = 1 AND a.resultat = 'échec' THEN 'CRITIQUE'
         WHEN s.priorite_loi = 1 AND a.resultat = 'mitigé' THEN 'GRAVE'
@@ -133,15 +91,13 @@ LEFT JOIN robots r ON a.id_robot = r.id_robot
 LEFT JOIN humains h ON a.id_humain = h.id_humain
 LEFT JOIN scenarios s ON a.id_scenario = s.id_scenario;
 
--- Consultation des impacts critiques
-SELECT * FROM vue_impact_actions 
-WHERE niveau_impact IN ('CRITIQUE', 'GRAVE')
-ORDER BY timestamp DESC;
 
--- Vue : Tendances d'échec
+SELECT * FROM vue_impact_actions 
+WHERE niveau_impact IN ('CRITIQUE', 'GRAVE');
+
+-- celle ci sert à classifier les différentes lois selon les tendances d'échecs ou problemes observées
 CREATE OR REPLACE VIEW vue_tendances_echec AS
-SELECT 
-    s.priorite_loi,
+SELECT s.priorite_loi,
     CASE s.priorite_loi
         WHEN 1 THEN 'Loi 1: Protection vie humaine'
         WHEN 2 THEN 'Loi 2: Obéissance aux ordres'
@@ -153,22 +109,18 @@ SELECT
     COUNT(CASE WHEN a.resultat = 'succès' THEN 1 END) as nb_succes,
     ROUND(100.0 * COUNT(CASE WHEN a.resultat = 'échec' THEN 1 END) / 
         COUNT(*), 2) as taux_echec,
-    ROUND(100.0 * COUNT(CASE WHEN a.resultat IN ('échec', 'mitigé') THEN 1 END) / 
+    ROUND(100.0 * COUNT(CASE WHEN a.resultat IN ('mitigé') THEN 1 END) / 
         COUNT(*), 2) as taux_problemes
 FROM actions a
 JOIN scenarios s ON a.id_scenario = s.id_scenario
 GROUP BY s.priorite_loi
 ORDER BY s.priorite_loi;
 
--- Analyse des échecs par modèle de robot
+-- cette vue compte le nombre d'echecs par modele ainsi que sont taux d'echec global.
 CREATE OR REPLACE VIEW vue_echecs_par_modele AS
-SELECT 
-    r.modele,
-    COUNT(*) as nb_actions,
-    COUNT(CASE WHEN a.resultat = 'échec' THEN 1 END) as nb_echecs,
+SELECT r.modele, COUNT(*) as nb_actions, COUNT(CASE WHEN a.resultat = 'échec' THEN 1 END) as nb_echecs,
     ROUND(100.0 * COUNT(CASE WHEN a.resultat = 'échec' THEN 1 END) / 
         COUNT(*), 2) as taux_echec,
-    -- Échecs par type de loi
     COUNT(CASE WHEN s.priorite_loi = 1 AND a.resultat = 'échec' THEN 1 END) as echecs_loi_1,
     COUNT(CASE WHEN s.priorite_loi = 2 AND a.resultat = 'échec' THEN 1 END) as echecs_loi_2,
     COUNT(CASE WHEN s.priorite_loi = 3 AND a.resultat = 'échec' THEN 1 END) as echecs_loi_3
@@ -178,33 +130,25 @@ JOIN scenarios s ON a.id_scenario = s.id_scenario
 GROUP BY r.modele
 ORDER BY taux_echec DESC;
 
--- Consultation des tendances
 SELECT * FROM vue_tendances_echec;
 SELECT * FROM vue_echecs_par_modele;
 
 
--- ----------------------------------------------------------------------------
--- TRANSACTION : Simulation d'ajustement des priorités
--- ----------------------------------------------------------------------------
+--Simulation
 
--- Transaction pour mettre à jour les priorités d'actions futures
--- (Simulation d'apprentissage basé sur les échecs passés)
 BEGIN;
 
--- Créer une table temporaire pour stocker les recommandations
-CREATE TEMP TABLE IF NOT EXISTS recommandations_priorites (
+-- Creation d'une table temporaire pour les recommandation s
+CREATE TEMP TABLE recommandations_priorites (
     id_scenario INTEGER,
     priorite_actuelle INTEGER,
     nb_echecs INTEGER,
     recommandation TEXT
 );
 
--- Analyser les scénarios avec taux d'échec élevé
+-- On insere les scénarios echoues avec leur recommandations futures
 INSERT INTO recommandations_priorites
-SELECT 
-    s.id_scenario,
-    s.priorite_loi,
-    COUNT(CASE WHEN a.resultat = 'échec' THEN 1 END) as nb_echecs,
+SELECT s.id_scenario, s.priorite_loi, COUNT(CASE WHEN a.resultat = 'échec' THEN 1 END) as nb_echecs,
     CASE 
         WHEN COUNT(CASE WHEN a.resultat = 'échec' THEN 1 END) > 3 
             THEN 'Réévaluation urgente du scénario recommandée'
@@ -217,54 +161,37 @@ LEFT JOIN actions a ON s.id_scenario = a.id_scenario
 GROUP BY s.id_scenario, s.priorite_loi
 HAVING COUNT(CASE WHEN a.resultat = 'échec' THEN 1 END) > 0;
 
--- Afficher les recommandations
-SELECT * FROM recommandations_priorites 
-WHERE nb_echecs > 0
-ORDER BY nb_echecs DESC;
+
+SELECT * FROM recommandations_priorites WHERE nb_echecs > 0 ORDER BY nb_echecs DESC;
 
 COMMIT;
 
 
--- ============================================================================
--- PARTIE II : ANALYSES LIBRES ET APPROFONDIES
--- ============================================================================
+-- PART 2
 
--- ----------------------------------------------------------------------------
--- ANALYSE 1 : Métriques avancées
--- ----------------------------------------------------------------------------
 
--- Durée moyenne des interventions par type de scénario
+-- Etape 1
+
+-- Compte le nombre d'actions, la durée totale des interventions et le taux de réussite moyen des scénarios
 CREATE OR REPLACE VIEW vue_duree_interventions AS
-SELECT 
-    s.priorite_loi,
-    COUNT(*) as nb_actions,
-    MIN(a.timestamp) as premiere_intervention,
+SELECT s.id_scenario, s.priorite_loi, s.description, COUNT(*) as nb_actions, MIN(a.timestamp) as premiere_intervention,
     MAX(a.timestamp) as derniere_intervention,
     MAX(a.timestamp) - MIN(a.timestamp) as duree_totale,
     AVG(CASE WHEN a.resultat = 'succès' THEN 1 ELSE 0 END) as taux_reussite_moyen
 FROM actions a
 JOIN scenarios s ON a.id_scenario = s.id_scenario
-GROUP BY s.priorite_loi
-ORDER BY s.priorite_loi;
+GROUP BY s.id_scenario
+ORDER BY s.id_scenario;
 
--- Impact de la vulnérabilité des humains sur les résultats
+-- Cette vue sert à voir la corrélation entre la vulnérabilité des humains et le nombre d'interventions réussies ou échouées
 CREATE OR REPLACE VIEW vue_impact_vulnerabilite AS
-SELECT 
-    h.vulnerabilite,
-    COUNT(*) as nb_interventions,
-    COUNT(CASE WHEN a.resultat = 'succès' THEN 1 END) as nb_succes,
+SELECT h.vulnerabilite, COUNT(*) as nb_interventions, COUNT(CASE WHEN a.resultat = 'succès' THEN 1 END) as nb_succes,
     COUNT(CASE WHEN a.resultat = 'échec' THEN 1 END) as nb_echecs,
-    ROUND(100.0 * COUNT(CASE WHEN a.resultat = 'succès' THEN 1 END) / 
+    ROUND(100.0 * nb_succes / 
         COUNT(*), 2) as taux_reussite
 FROM humains h
 JOIN actions a ON h.id_humain = a.id_humain
-GROUP BY h.vulnerabilite
-ORDER BY 
-    CASE h.vulnerabilite
-        WHEN 'élevée' THEN 1
-        WHEN 'moyenne' THEN 2
-        WHEN 'faible' THEN 3
-    END;
+GROUP BY h.vulnerabilite;
 
 
 -- ----------------------------------------------------------------------------

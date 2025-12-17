@@ -8,13 +8,12 @@ import os
 import random
 from datetime import datetime, timedelta
 
-# Configuration
-password = os.environ.get('POSTGRES_PASSWORD', 'ulysse')
+
 conn = psycopg2.connect(
     host="localhost",
     database="colonie",
     user="postgres",
-    password=password
+    password="admin"
 )
 conn.set_client_encoding('UTF8')
 cur = conn.cursor()

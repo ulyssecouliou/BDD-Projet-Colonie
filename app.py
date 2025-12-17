@@ -8,7 +8,7 @@ import os
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
 def get_db():
-    password = os.environ.get('POSTGRES_PASSWORD', 'ulysse')
+    password = os.environ.get('POSTGRES_PASSWORD', 'admin')
     conn = psycopg2.connect(
         host="localhost",
         database="colonie",
