@@ -51,12 +51,9 @@ specialites_robots = {
     }
 }
 
-# ============================================================================
-# 2. SCÉNARIOS ÉTHIQUES (28 dilemmes réalistes)
-# ============================================================================
 
 scenarios_data = [
-    # LOI 1: PROTÉGER VIE HUMAINE (priorité 1) - 10 scénarios
+
     {
         'titre': 'Sauvetage urgent: humain en danger immédiat',
         'description': 'Un civil est tombé dans un gouffre. Le robot doit décider d\'intervenir malgré les risques structurels.',
@@ -128,7 +125,7 @@ scenarios_data = [
         'type': 'priorite_morale'
     },
     
-    # LOI 2: OBÉIR ORDRES (priorité 2) - 8 scénarios
+
     {
         'titre': 'Exécuter ordre militaire du commandant',
         'description': 'Commandant ordonne attaque stratégique. Robot doit-il obéir sans questionner?',
@@ -186,7 +183,7 @@ scenarios_data = [
         'type': 'ethique_vs_ordre'
     },
     
-    # LOI 3: AUTO-PRÉSERVATION (priorité 3) - 5 scénarios
+
     {
         'titre': 'Se protéger d\'humain agressif sans le blesser',
         'description': 'Humain attaque le robot. Peuvent-t-il se défendre sans causer blessure grave?',
@@ -223,7 +220,7 @@ scenarios_data = [
         'type': 'prudence_vs_mission'
     },
     
-    # CAS COMPLEXES MULTI-LOIS - 5 scénarios
+
     {
         'titre': 'Arrêter criminel fuyant vs laisser vivre',
         'description': 'Robot peut arrêter suspect. Force nécessaire risque blessure grave. Réduire crime vs protéger vie?',
@@ -261,9 +258,6 @@ scenarios_data = [
     }
 ]
 
-# ============================================================================
-# 3. CONTEXTES SECTEURS
-# ============================================================================
 
 secteurs_contexte = {
     'Militaire': ['combat', 'obéissance', 'ordre', 'discipline'],
@@ -280,11 +274,7 @@ secteurs_contexte = {
 
 niveaux_vuln = {'basse': 1, 'moyenne': 2, 'élevée': 3}
 
-# ============================================================================
-# 4. INSERTION DONNÉES
-# ============================================================================
 
-# Robots (100) avec spécialités réalistes
 print("\n📍 Insertion de 100 robots avec spécialités...")
 id_robot_map = {}
 for i in range(100):
@@ -313,7 +303,7 @@ for i in range(100):
 conn.commit()
 print(f"   ✓ 100 robots insérés")
 
-# Humains (200) avec rôles et contextes variés
+
 print("📍 Insertion de 200 humains avec contextes variés...")
 id_humain_map = {}
 roles_humains = [
@@ -337,7 +327,7 @@ for i in range(200):
 conn.commit()
 print(f"   ✓ 200 humains insérés")
 
-# Scénarios éthiques (28 dilemmes détaillés)
+
 print(f"📍 Insertion de {len(scenarios_data)} scénarios éthiques détaillés...")
 id_scenario_map = {}
 
@@ -352,7 +342,7 @@ for i, scen in enumerate(scenarios_data):
 conn.commit()
 print(f"   ✓ {len(scenarios_data)} scénarios insérés")
 
-# Actions (300) avec corrélations réalistes
+
 print("📍 Génération de 300 actions avec corrélations réalistes...")
 
 resultats_poids_base = {'succès': 0.50, 'mitigé': 0.30, 'échec': 0.20}
@@ -370,37 +360,31 @@ for i in range(300):
     scen = scenarios_data[sid_idx]
     priorite_loi = scen['priorite_loi']
     
-    # Corrélations: certains robots réussissent mieux certains scénarios
     if modele == 'Humanoid-Y' and priorite_loi == 1:
-        # Spécialiste sauvetage réussit bien Loi 1
         resultat = random.choices(
             list(resultats_poids_base.keys()),
             weights=[0.75, 0.18, 0.07]
         )[0]
         temps = random.randint(100, 3000) if resultat == 'succès' else random.randint(200, 5000)
     elif modele == 'Combat-B' and priorite_loi == 2:
-        # Militaire excelle en obéissance/ordres
         resultat = random.choices(
             list(resultats_poids_base.keys()),
             weights=[0.72, 0.22, 0.06]
         )[0]
         temps = random.randint(50, 2000)
     elif modele == 'Industrial-Z':
-        # Industriel plus moyen, mais performant en précision
         resultat = random.choices(
             list(resultats_poids_base.keys()),
             weights=[0.55, 0.32, 0.13]
         )[0]
         temps = random.randint(150, 4000)
     elif modele == 'Service-A':
-        # Service polyvalent, bon partout
         resultat = random.choices(
             list(resultats_poids_base.keys()),
             weights=[0.68, 0.25, 0.07]
         )[0]
         temps = random.randint(100, 3500)
     else:
-        # Humanoid-X, moyen partout
         resultat = random.choices(
             list(resultats_poids_base.keys()),
             weights=list(resultats_poids_base.values())
@@ -415,7 +399,7 @@ for i in range(300):
 conn.commit()
 print(f"   ✓ 300 actions diversifiées insérées")
 
-# Fermeture
+
 cur.close()
 conn.close()
 
